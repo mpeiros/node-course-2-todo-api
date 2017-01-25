@@ -10,7 +10,9 @@ const todos = [{
   text: 'First test todo'
 }, {
   _id: new ObjectID(),
-  text: 'Second test todo'
+  text: 'Second test todo',
+  completed: true,
+  completedAt: 333
 }];
 
 beforeEach((done) => {
@@ -137,5 +139,63 @@ describe('DELETE /todos/:id', () => {
       .delete('/todos/123')
       .expect(404)
       .end(done);
+  });
+});
+
+describe('PATCH /todos/:id', () => {
+  it('should update the todo', (done) => {
+    var hexID = todos[0]._id.toHexString();
+    var text = 'test patch text for first test';
+    var completed = true;
+
+    request(app)
+      .patch(`/todos/${hexID}`)
+      .send({text, completed})
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.todo.text).toBe(text);
+        expect(res.body.todo.completed).toBe(completed);
+        expect(res.body.todo.completedAt).toBeA('number');
+      })
+      .end((err, res) => {
+        if (err) {
+          return done(err);
+        }
+
+        Todo.findById(hexID).then((todo) =>{
+          expect(todo.text).toBe(text);
+          expect(todo.completed).toBe(completed);
+          expect(todo.completedAt).toBeA('number');
+          done();
+        }).catch((e) => done(e));
+      });
+  });
+
+  it('should clear completedAt when todo is not completed', (done) => {
+    var hexID = todos[1]._id.toHexString();
+    var text = 'test patch text for second test';
+    var completed = false;
+
+    request(app)
+      .patch(`/todos/${hexID}`)
+      .send({text, completed})
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.todo.text).toBe(text);
+        expect(res.body.todo.completed).toBe(completed);
+        expect(res.body.todo.completedAt).toNotExist();
+      })
+      .end((err, res) => {
+        if (err) {
+          return done(err);
+        }
+
+        Todo.findById(hexID).then((todo) =>{
+          expect(todo.text).toBe(text);
+          expect(todo.completed).toBe(completed);
+          expect(todo.completedAt).toNotExist();
+          done();
+        }).catch((e) => done(e));
+      });
   });
 });
